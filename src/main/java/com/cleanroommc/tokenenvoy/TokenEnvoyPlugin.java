@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
 import com.cleanroommc.tokenenvoy.resource.TokenResourceAction;
@@ -172,7 +177,9 @@ public abstract class TokenEnvoyPlugin implements Plugin<Project> {
             if (value instanceof DirectoryProperty directory) {
                 return directory;
             }
-            throw new GradleException("Unable to get destination directory. " + task.getClass() + "::getDestinationDirectory returned type " + value.getClass());
+            throw new GradleException(
+                    "Unable to get destination directory. " + task.getClass() + "::getDestinationDirectory returned type " + value.getClass()
+            );
         } catch (Throwable t) {
             throw new GradleException("Unable to get destination directory", t);
         }

@@ -1,5 +1,11 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.TaskOutcome;
@@ -17,11 +23,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 class TokenJavacPluginTest {
 
     @TempDir
@@ -33,7 +34,9 @@ class TokenJavacPluginTest {
         for (int version : List.of(21, 25)) {
             this.projectDir = root.resolve("java" + version);
             write("settings.gradle", "rootProject.name = 'javac-test'");
-            write("build.gradle", """
+            write(
+                    "build.gradle",
+                    """
                     plugins {
                         id 'java'
                         id 'com.cleanroommc.tokenenvoy'
@@ -49,8 +52,13 @@ class TokenJavacPluginTest {
                         classpath = sourceSets.main.runtimeClasspath
                         mainClass = 'example.Probe'
                     }
-                    """.formatted(version));
-            write("src/main/java/example/Probe.java", """
+                    """.formatted(
+                            version
+                    )
+            );
+            write(
+                    "src/main/java/example/Probe.java",
+                    """
                     package example;
                     @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
                     @interface Marker { String value(); }
@@ -84,14 +92,18 @@ class TokenJavacPluginTest {
                                     DETAIL.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
                         }
                     }
-                    """);
-            write("src/main/java/example/Consumer.java", """
+                    """
+            );
+            write(
+                    "src/main/java/example/Consumer.java",
+                    """
                     package example;
                     public class Consumer {
                         public static final String INLINED = Probe.VERSION;
                         public static final String HELD = "@{VERSION}";
                     }
-                    """);
+                    """
+            );
             write("src/main/java/example/Independent.java", "package example; class Independent { int value() { return 1; } }");
             String detail = "quote\" slash\\ newline\n雪";
             Properties tokens = new Properties();
@@ -102,47 +114,54 @@ class TokenJavacPluginTest {
             }
 
             BuildResult first = runner("runProbe").build();
-            assertTrue(List.of(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE).contains(first.task(":compileJava").getOutcome()));
-            assertNull(first.task(":tokenEnvoyJavaClasses"));
-            assertTrue(first.getOutput().contains("VERSION=one"), first.getOutput());
-            assertTrue(first.getOutput().contains("DETAIL=" + Base64.getEncoder().encodeToString(detail.getBytes(StandardCharsets.UTF_8))), first.getOutput());
-            assertFalse(Files.exists(this.projectDir.resolve("build/tokenEnvoy")));
-            assertTrue(Files.readString(this.projectDir.resolve("src/main/java/example/Probe.java")).contains("@{VERSION}"));
-            assertTrue(new String(Files.readAllBytes(this.projectDir.resolve("build/classes/java/main/example/Consumer.class")), StandardCharsets.ISO_8859_1).contains("@{VERSION}"));
+            assertThat(List.of(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE).contains(first.task(":compileJava").getOutcome())).isTrue();
+            assertThat(first.task(":tokenEnvoyJavaClasses")).isNull();
+            assertThat(first.getOutput().contains("VERSION=one")).as(first.getOutput()).isTrue();
+            assertThat(first.getOutput().contains("DETAIL=" + Base64.getEncoder().encodeToString(detail.getBytes(StandardCharsets.UTF_8))))
+                    .as(first.getOutput())
+                    .isTrue();
+            assertThat(Files.exists(this.projectDir.resolve("build/tokenEnvoy"))).isFalse();
+            assertThat(Files.readString(this.projectDir.resolve("src/main/java/example/Probe.java")).contains("@{VERSION}")).isTrue();
+            assertThat(
+                    new String(
+                            Files.readAllBytes(this.projectDir.resolve("build/classes/java/main/example/Consumer.class")),
+                            StandardCharsets.ISO_8859_1
+                    ).contains("@{VERSION}")
+            ).isTrue();
             byte[] original = Files.readAllBytes(this.projectDir.resolve("build/classes/java/main/example/Probe.class"));
-            assertEquals(version + 44, (original[6] & 255) << 8 | original[7] & 255);
+            assertThat((original[6] & 255) << 8 | original[7] & 255).isEqualTo(version + 44);
 
             BuildResult unchanged = runner("runProbe").build();
-            assertEquals(TaskOutcome.UP_TO_DATE, unchanged.task(":compileJava").getOutcome());
-            assertTrue(unchanged.getOutput().contains("Reusing configuration cache"), unchanged.getOutput());
+            assertThat(unchanged.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.UP_TO_DATE);
+            assertThat(unchanged.getOutput().contains("Reusing configuration cache")).as(unchanged.getOutput()).isTrue();
 
             write("src/main/java/example/Independent.java", "package example; class Independent { int value() { return 2; } }");
             BuildResult incremental = runner("runProbe", "--info").build();
-            assertTrue(incremental.getOutput().contains("Incremental compilation of 1 classes"), incremental.getOutput());
+            assertThat(incremental.getOutput().contains("Incremental compilation of 1 classes")).as(incremental.getOutput()).isTrue();
 
             tokens.setProperty("VERSION", "two");
             try (var output = Files.newOutputStream(this.projectDir.resolve("tokens.properties"))) {
                 tokens.store(output, null);
             }
             BuildResult changed = runner("runProbe").build();
-            assertEquals(TaskOutcome.SUCCESS, changed.task(":compileJava").getOutcome());
-            assertTrue(changed.getOutput().contains("VERSION=two"), changed.getOutput());
+            assertThat(changed.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+            assertThat(changed.getOutput().contains("VERSION=two")).as(changed.getOutput()).isTrue();
 
             BuildResult restored = runner("clean", "runProbe").build();
-            assertEquals(TaskOutcome.FROM_CACHE, restored.task(":compileJava").getOutcome());
-            assertTrue(restored.getOutput().contains("VERSION=two"), restored.getOutput());
+            assertThat(restored.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.FROM_CACHE);
+            assertThat(restored.getOutput().contains("VERSION=two")).as(restored.getOutput()).isTrue();
 
             BuildResult resourcesOnly = runner("runProbe", "-PresourcesOnly=true").build();
-            assertTrue(resourcesOnly.getOutput().contains("VERSION=@{VERSION}"), resourcesOnly.getOutput());
+            assertThat(resourcesOnly.getOutput().contains("VERSION=@{VERSION}")).as(resourcesOnly.getOutput()).isTrue();
             BuildResult enabled = runner("runProbe").build();
-            assertTrue(enabled.getOutput().contains("VERSION=two"), enabled.getOutput());
+            assertThat(enabled.getOutput().contains("VERSION=two")).as(enabled.getOutput()).isTrue();
 
             tokens.remove("VERSION");
             try (var output = Files.newOutputStream(this.projectDir.resolve("tokens.properties"))) {
                 tokens.store(output, null);
             }
             BuildResult removed = runner("runProbe").build();
-            assertTrue(removed.getOutput().contains("VERSION=@{VERSION}"), removed.getOutput());
+            assertThat(removed.getOutput().contains("VERSION=@{VERSION}")).as(removed.getOutput()).isTrue();
         }
     }
 
@@ -151,7 +170,9 @@ class TokenJavacPluginTest {
         write("settings.gradle", "rootProject.name = 'processor-test'; include 'processor'");
         write("processor/build.gradle", "plugins { id 'java' }; java.toolchain.languageVersion = JavaLanguageVersion.of(25)");
         write("processor/src/main/resources/META-INF/services/javax.annotation.processing.Processor", "GenerateTokens");
-        write("processor/src/main/java/GenerateTokens.java", """
+        write(
+                "processor/src/main/java/GenerateTokens.java",
+                """
                 import javax.annotation.processing.*;
                 import javax.lang.model.SourceVersion;
                 import javax.lang.model.element.TypeElement;
@@ -172,8 +193,11 @@ class TokenJavacPluginTest {
                         return false;
                     }
                 }
-                """);
-        write("build.gradle", """
+                """
+        );
+        write(
+                "build.gradle",
+                """
                 plugins {
                     id 'java'
                     id 'com.cleanroommc.tokenenvoy'
@@ -187,8 +211,11 @@ class TokenJavacPluginTest {
                     classpath = sourceSets.main.runtimeClasspath
                     mainClass = 'example.Probe'
                 }
-                """);
-        write("src/main/java/example/Probe.java", """
+                """
+        );
+        write(
+                "src/main/java/example/Probe.java",
+                """
                 package example;
                 @java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
                 @interface Marker { String value() default "@{VERSION}"; }
@@ -201,25 +228,51 @@ class TokenJavacPluginTest {
                         }
                     }
                 }
-                """);
+                """
+        );
         BuildResult result = runner("runProbe").build();
-        assertEquals(TaskOutcome.SUCCESS, result.task(":runProbe").getOutcome());
+        assertThat(result.task(":runProbe").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
         byte[] generated = Files.readAllBytes(this.projectDir.resolve("build/classes/java/main/example/Generated.class"));
-        assertEquals(52, (generated[6] & 255) << 8 | generated[7] & 255);
-        assertTrue(Files.readString(this.projectDir.resolve("build/generated/sources/annotationProcessor/java/main/example/Generated.java")).contains("@{VERSION}"));
+        assertThat((generated[6] & 255) << 8 | generated[7] & 255).isEqualTo(52);
+        assertThat(
+                Files.readString(this.projectDir.resolve("build/generated/sources/annotationProcessor/java/main/example/Generated.java")).contains("@{VERSION}")
+        ).isTrue();
     }
 
     @Test
     void compilerPatternsMatchGradleClassFilters() {
-        List<String> paths = List.of("Tags.class", "Other.class", "example/Tags.class", "example/Tags$Nested.class",
-                "example/deep/Tags.class", "example/internal/Tags.class", "example/deep/internal/Tags.class");
-        for (String glob : List.of("Tags.class", "example.Tags", "example.Tags.class", "**/Tags.class", "*.class",
-                "**.class", "example/*", "example/**", "example/", "**/internal/**", "example/**/Tags.class",
-                "**/**/Tags.class", "example/Tag?.class", "example/Tags$Nested.class", "example\\Tags.class")) {
+        List<String> paths = List.of(
+                "Tags.class",
+                "Other.class",
+                "example/Tags.class",
+                "example/Tags$Nested.class",
+                "example/deep/Tags.class",
+                "example/internal/Tags.class",
+                "example/deep/internal/Tags.class"
+        );
+        for (String glob : List.of(
+                "Tags.class",
+                "example.Tags",
+                "example.Tags.class",
+                "**/Tags.class",
+                "*.class",
+                "**.class",
+                "example/*",
+                "example/**",
+                "example/",
+                "**/internal/**",
+                "example/**/Tags.class",
+                "**/**/Tags.class",
+                "example/Tag?.class",
+                "example/Tags$Nested.class",
+                "example\\Tags.class"
+        )) {
             TokenPathFilter gradle = TokenPathFilter.of(List.of(glob), List.of(), TokenPathFilter.Kind.CLASSES);
             List<Pattern> patterns = TokenJavacArguments.classPatterns(List.of(glob)).stream().map(Pattern::compile).toList();
             for (String path : paths) {
-                assertEquals(gradle.accepts(path), patterns.stream().anyMatch(pattern -> pattern.matcher(path).matches()), glob + " against " + path);
+                assertThat(patterns.stream().anyMatch(pattern -> pattern.matcher(path).matches()))
+                        .as(glob + " against " + path)
+                        .isEqualTo(gradle.accepts(path));
             }
         }
     }

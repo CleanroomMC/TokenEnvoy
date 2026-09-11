@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
 import org.objectweb.asm.ConstantDynamic;
@@ -16,7 +21,7 @@ public final class Tokens {
     public static final String PREFIX = "@{";
     public static final String SUFFIX = "}";
 
-    private Tokens() { }
+    private Tokens() {}
 
     public static String placeholder(String name) {
         return PREFIX + name + SUFFIX;

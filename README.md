@@ -131,3 +131,9 @@ tokenEnvoy {
 ```
 
 Use `sourceSets.*.output`/`classes` task as the classes input.
+
+## Building
+
+The build applies [Cleanroom Conventions](https://github.com/CleanroomMC/Conventions), whose plugin jar needs a Java 25 Gradle daemon.
+
+The published plugin still targets Java 21.

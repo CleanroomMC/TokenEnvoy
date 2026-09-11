@@ -1,10 +1,14 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TokenFilesTest {
 
@@ -17,18 +21,18 @@ class TokenFilesTest {
                 """,
                 Map.of("mod_version", "4.0.0")
         );
-        assertEquals("4.0.0", tokens.get("VERSION"));
-        assertEquals("plain", tokens.get("MOD_ID"));
+        assertThat(tokens.get("VERSION")).isEqualTo("4.0.0");
+        assertThat(tokens.get("MOD_ID")).isEqualTo("plain");
     }
 
     @Test
     void leavesUnknownPlaceholdersInPlace() {
-        assertEquals("${missing}", TokenFiles.interpolate("${missing}", Map.of("other", "x")));
+        assertThat(TokenFiles.interpolate("${missing}", Map.of("other", "x"))).isEqualTo("${missing}");
     }
 
     @Test
     void interpolatesMultiplePlaceholders() {
-        assertEquals("a-b", TokenFiles.interpolate("${one}-${two}", Map.of("one", "a", "two", "b")));
+        assertThat(TokenFiles.interpolate("${one}-${two}", Map.of("one", "a", "two", "b"))).isEqualTo("a-b");
     }
 
 }

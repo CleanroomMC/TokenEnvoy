@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
 import org.gradle.api.file.FilePermissions;

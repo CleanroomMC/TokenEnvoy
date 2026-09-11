@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy.asm;
 
 import com.cleanroommc.tokenenvoy.Tokens;
@@ -19,6 +24,6 @@ public final class TokenClassTransformer {
         return writer.toByteArray();
     }
 
-    private TokenClassTransformer() { }
+    private TokenClassTransformer() {}
 
 }

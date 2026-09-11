@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy.javac;
 
 import com.sun.source.tree.ClassTree;
@@ -48,6 +53,7 @@ public final class TokenJavacPlugin implements Plugin {
 
         // PARSE finishes before javac computes constants, switch hashes, and inlined values
         task.addTaskListener(new TaskListener() {
+
             @Override
             public void finished(TaskEvent event) {
                 if (event.getKind() != TaskEvent.Kind.PARSE) {
@@ -56,6 +62,7 @@ public final class TokenJavacPlugin implements Plugin {
                 var unit = event.getCompilationUnit();
                 String prefix = unit.getPackageName() == null ? "" : unit.getPackageName().toString().replace('.', '/') + "/";
                 TreeScanner<Void, Void> scanner = new TreeScanner<>() {
+
                     @Override
                     public Void visitLiteral(LiteralTree tree, Void unused) {
                         if (tree.getValue() instanceof String value) {
@@ -66,6 +73,7 @@ public final class TokenJavacPlugin implements Plugin {
                         }
                         return null;
                     }
+
                 };
                 for (var declaration : unit.getTypeDecls()) {
                     if (declaration instanceof ClassTree type && accepts(prefix + type.getSimpleName() + ".class", includes, excludes)) {
@@ -79,12 +87,13 @@ public final class TokenJavacPlugin implements Plugin {
                     scanner.scan(unit.getModule(), null);
                 }
             }
+
         });
     }
 
     private static boolean accepts(String path, List<Pattern> includes, List<Pattern> excludes) {
-        return (includes.isEmpty() || includes.stream().anyMatch(pattern -> pattern.matcher(path).matches()))
-                && excludes.stream().noneMatch(pattern -> pattern.matcher(path).matches());
+        return (includes.isEmpty() || includes.stream().anyMatch(pattern -> pattern.matcher(path).matches())) &&
+                excludes.stream().noneMatch(pattern -> pattern.matcher(path).matches());
     }
 
 }

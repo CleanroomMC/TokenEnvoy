@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
 import java.io.IOException;
@@ -9,7 +14,7 @@ import java.util.Properties;
 
 public final class TokenFiles {
 
-    private TokenFiles() { }
+    private TokenFiles() {}
 
     public static Map<String, String> read(String contents, Map<String, String> interpolation) {
         Properties properties = new Properties();

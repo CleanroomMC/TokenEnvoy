@@ -1,5 +1,11 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.TaskOutcome;
@@ -14,11 +20,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TokenEnvoyPluginTest {
 
@@ -46,10 +47,10 @@ class TokenEnvoyPluginTest {
                 """
         );
         String output = runner("help", "--warn").build().getOutput();
-        assertTrue(output.contains("[Token Envoy] Token 'VERSION'"), output);
-        assertTrue(output.contains("configuration cache"), output);
-        assertFalse(output.contains("Token 'SAFE'"), output);
-        assertFalse(output.contains("Token 'PROP'"), output);
+        assertThat(output.contains("[Token Envoy] Token 'VERSION'")).as(output).isTrue();
+        assertThat(output.contains("configuration cache")).as(output).isTrue();
+        assertThat(output.contains("Token 'SAFE'")).as(output).isFalse();
+        assertThat(output.contains("Token 'PROP'")).as(output).isFalse();
     }
 
     @Test
@@ -62,7 +63,7 @@ class TokenEnvoyPluginTest {
                 }
                 """
         );
-        assertEquals(TaskOutcome.SUCCESS, runner("help").build().task(":help").getOutcome());
+        assertThat(runner("help").build().task(":help").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
     }
 
     @Test
@@ -83,17 +84,17 @@ class TokenEnvoyPluginTest {
                         }
                         """
         );
-        writeFile("src/main/java/com/example/Example.java",
+        writeFile(
+                "src/main/java/com/example/Example.java",
                 """
                         package com.example;
 
                         public class Example {
                         }
-                        """);
-        assertNotNull(runner("consumeClassesDirectory").build().task(":compileJava"),
-                "classesDirectory consumers ran without Java compilation");
-        assertNotNull(runner("consumeClassesDirs").build().task(":compileJava"),
-                "output.classesDirs consumers ran without Java compilation");
+                        """
+        );
+        assertThat(runner("consumeClassesDirectory").build().task(":compileJava")).as("classesDirectory consumers ran without Java compilation").isNotNull();
+        assertThat(runner("consumeClassesDirs").build().task(":compileJava")).as("output.classesDirs consumers ran without Java compilation").isNotNull();
     }
 
     @Test
@@ -125,7 +126,8 @@ class TokenEnvoyPluginTest {
                 }
                 """
         );
-        Path resource = writeResource("mcmod.info",
+        Path resource = writeResource(
+                "mcmod.info",
                 """
                 {
                   "version": "@{VERSION}",
@@ -135,40 +137,41 @@ class TokenEnvoyPluginTest {
         );
 
         BuildResult result = runner("classes").build();
-        assertEquals(TaskOutcome.SUCCESS, result.task(":compileJava").getOutcome());
-        assertEquals(TaskOutcome.SUCCESS, result.task(":processResources").getOutcome());
+        assertThat(result.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(result.task(":processResources").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
 
         byte[] classBytes = Files.readAllBytes(classFile("example/Reference.class"));
         String classText = new String(classBytes, StandardCharsets.ISO_8859_1);
-        assertTrue(classText.contains("1.2.3"), classText);
-        assertTrue(classText.contains("id=examplemod"), classText);
-        assertFalse(classText.contains("@{VERSION}"), classText);
-        assertFalse(classText.contains("@{MOD_ID}"), classText);
+        assertThat(classText.contains("1.2.3")).as(classText).isTrue();
+        assertThat(classText.contains("id=examplemod")).as(classText).isTrue();
+        assertThat(classText.contains("@{VERSION}")).as(classText).isFalse();
+        assertThat(classText.contains("@{MOD_ID}")).as(classText).isFalse();
 
-        assertEquals(
+        assertThat(Files.readString(resourceFile("mcmod.info"))).isEqualTo(
                 """
                 {
                   "version": "1.2.3",
                   "modid": "examplemod"
                 }
-                """,
-                Files.readString(resourceFile("mcmod.info"))
+                """
         );
 
-        assertTrue(Files.readString(source).contains("@{VERSION}"));
-        assertTrue(Files.readString(source).contains("@{MOD_ID}"));
-        assertTrue(Files.readString(resource).contains("@{VERSION}"));
+        assertThat(Files.readString(source).contains("@{VERSION}")).isTrue();
+        assertThat(Files.readString(source).contains("@{MOD_ID}")).isTrue();
+        assertThat(Files.readString(resource).contains("@{VERSION}")).isTrue();
     }
 
     @Test
     void sourceSetTokensOverrideGlobalsAndPropertyFilesInterpolate() throws IOException {
-        Files.writeString(this.projectDir.resolve("gradle.properties"),
+        Files.writeString(
+                this.projectDir.resolve("gradle.properties"),
                 """
                 mod_version=9.9.9
                 mod_id=fromprops
                 """
         );
-        Files.writeString(this.projectDir.resolve("tokens.properties"),
+        Files.writeString(
+                this.projectDir.resolve("tokens.properties"),
                 """
                 VERSION=${mod_version}
                 MOD_ID=${mod_id}
@@ -215,15 +218,15 @@ class TokenEnvoyPluginTest {
         runner("classes", "testClasses").build();
 
         String main = classText("example/MainTokens.class");
-        assertTrue(main.contains("9.9.9"), main);
-        assertTrue(main.contains("everywhere"), main);
-        assertTrue(main.contains("fromprops"), main);
-        assertFalse(main.contains("global"), main);
+        assertThat(main.contains("9.9.9")).as(main).isTrue();
+        assertThat(main.contains("everywhere")).as(main).isTrue();
+        assertThat(main.contains("fromprops")).as(main).isTrue();
+        assertThat(main.contains("global")).as(main).isFalse();
 
         String test = testClassText("example/TestTokens.class");
-        assertTrue(test.contains("test-only"), test);
-        assertTrue(test.contains("everywhere"), test);
-        assertFalse(test.contains("9.9.9"), test);
+        assertThat(test.contains("test-only")).as(test).isTrue();
+        assertThat(test.contains("everywhere")).as(test).isTrue();
+        assertThat(test.contains("9.9.9")).as(test).isFalse();
     }
 
     @Test
@@ -255,9 +258,9 @@ class TokenEnvoyPluginTest {
         BuildResult result = runner("classes").build();
 
         String classText = classText("example/Held.class");
-        assertTrue(classText.contains("@{VERSION}"), classText);
-        assertFalse(classText.contains("1.0.0"), classText);
-        assertEquals("v=1.0.0\n", Files.readString(resourceFile("version.txt")));
+        assertThat(classText.contains("@{VERSION}")).as(classText).isTrue();
+        assertThat(classText.contains("1.0.0")).as(classText).isFalse();
+        assertThat(Files.readString(resourceFile("version.txt"))).isEqualTo("v=1.0.0\n");
     }
 
     @Test
@@ -324,17 +327,17 @@ class TokenEnvoyPluginTest {
 
         runner("classes").build();
 
-        assertTrue(classText("example/Replaced.class").contains("yes"));
-        assertFalse(classText("example/Replaced.class").contains("@{VERSION}"));
-        assertTrue(classText("example/Extra.class").contains("yes"));
-        assertTrue(classText("example/Also.class").contains("@{VERSION}"));
-        assertTrue(classText("example/Held.class").contains("@{VERSION}"));
+        assertThat(classText("example/Replaced.class").contains("yes")).isTrue();
+        assertThat(classText("example/Replaced.class").contains("@{VERSION}")).isFalse();
+        assertThat(classText("example/Extra.class").contains("yes")).isTrue();
+        assertThat(classText("example/Also.class").contains("@{VERSION}")).isTrue();
+        assertThat(classText("example/Held.class").contains("@{VERSION}")).isTrue();
 
-        assertEquals("v=yes\n", Files.readString(resourceFile("keep.txt")));
-        assertEquals("v=@{VERSION}\n", Files.readString(resourceFile("held.txt")));
-        assertEquals("{\"v\":\"yes\"}\n", Files.readString(resourceFile("data.json")));
-        assertEquals("{\"v\":\"@{VERSION}\"}\n", Files.readString(resourceFile("skip.json")));
-        assertEquals("{\"v\":\"yes\"}\n", Files.readString(resourceFile("nested/deep.json")));
+        assertThat(Files.readString(resourceFile("keep.txt"))).isEqualTo("v=yes\n");
+        assertThat(Files.readString(resourceFile("held.txt"))).isEqualTo("v=@{VERSION}\n");
+        assertThat(Files.readString(resourceFile("data.json"))).isEqualTo("{\"v\":\"yes\"}\n");
+        assertThat(Files.readString(resourceFile("skip.json"))).isEqualTo("{\"v\":\"@{VERSION}\"}\n");
+        assertThat(Files.readString(resourceFile("nested/deep.json"))).isEqualTo("{\"v\":\"yes\"}\n");
     }
 
     @Test
@@ -369,8 +372,8 @@ class TokenEnvoyPluginTest {
         );
 
         runner("classes").build();
-        assertTrue(classText("example/Replaced.class").contains("yes"));
-        assertTrue(classText("example/Held.class").contains("@{VERSION}"));
+        assertThat(classText("example/Replaced.class").contains("yes")).isTrue();
+        assertThat(classText("example/Held.class").contains("@{VERSION}")).isTrue();
 
         writeBuild(
                 """
@@ -386,9 +389,9 @@ class TokenEnvoyPluginTest {
         );
 
         BuildResult second = runner("classes").build();
-        assertEquals(TaskOutcome.SUCCESS, second.task(":compileJava").getOutcome());
-        assertTrue(classText("example/Replaced.class").contains("@{VERSION}"));
-        assertTrue(classText("example/Held.class").contains("yes"));
+        assertThat(second.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(classText("example/Replaced.class").contains("@{VERSION}")).isTrue();
+        assertThat(classText("example/Held.class").contains("yes")).isTrue();
     }
 
     @Test
@@ -427,17 +430,17 @@ class TokenEnvoyPluginTest {
         writeResource("skip.json", "{\"v\":\"@{VERSION}\"}\n");
 
         BuildResult first = ccRunner("classes").build();
-        assertTrue(first.getOutput().contains("Configuration cache entry stored"), first.getOutput());
-        assertFalse(first.getOutput().contains("Configuration cache problems"), first.getOutput());
-        assertTrue(classText("example/Kept.class").contains("cc"));
-        assertTrue(classText("example/Held.class").contains("@{VERSION}"));
-        assertEquals("v=cc\n", Files.readString(resourceFile("keep.txt")));
-        assertEquals("{\"v\":\"@{VERSION}\"}\n", Files.readString(resourceFile("skip.json")));
+        assertThat(first.getOutput().contains("Configuration cache entry stored")).as(first.getOutput()).isTrue();
+        assertThat(first.getOutput().contains("Configuration cache problems")).as(first.getOutput()).isFalse();
+        assertThat(classText("example/Kept.class").contains("cc")).isTrue();
+        assertThat(classText("example/Held.class").contains("@{VERSION}")).isTrue();
+        assertThat(Files.readString(resourceFile("keep.txt"))).isEqualTo("v=cc\n");
+        assertThat(Files.readString(resourceFile("skip.json"))).isEqualTo("{\"v\":\"@{VERSION}\"}\n");
 
         BuildResult second = ccRunner("classes").build();
-        assertTrue(second.getOutput().contains("Reusing configuration cache"), second.getOutput());
-        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":compileJava").getOutcome());
-        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":processResources").getOutcome());
+        assertThat(second.getOutput().contains("Reusing configuration cache")).as(second.getOutput()).isTrue();
+        assertThat(second.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.UP_TO_DATE);
+        assertThat(second.task(":processResources").getOutcome()).isEqualTo(TaskOutcome.UP_TO_DATE);
     }
 
     @Test
@@ -459,7 +462,7 @@ class TokenEnvoyPluginTest {
         Files.write(image, png);
 
         runner("processResources").build();
-        assertEquals(Arrays.toString(png), Arrays.toString(Files.readAllBytes(resourceFile("icon.png"))));
+        assertThat(Arrays.toString(Files.readAllBytes(resourceFile("icon.png")))).isEqualTo(Arrays.toString(png));
     }
 
     @Test
@@ -485,7 +488,7 @@ class TokenEnvoyPluginTest {
         );
 
         runner("classes").build();
-        assertTrue(classText("example/Version.class").contains("1.0.0"));
+        assertThat(classText("example/Version.class").contains("1.0.0")).isTrue();
 
         writeBuild(
                 """
@@ -500,11 +503,11 @@ class TokenEnvoyPluginTest {
         );
 
         BuildResult second = runner("classes").build();
-        assertEquals(TaskOutcome.SUCCESS, second.task(":compileJava").getOutcome());
+        assertThat(second.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
         String rewritten = classText("example/Version.class");
-        assertTrue(rewritten.contains("2.0.0"), rewritten);
-        assertFalse(rewritten.contains("1.0.0"), rewritten);
-        assertFalse(rewritten.contains("@{VERSION}"), rewritten);
+        assertThat(rewritten.contains("2.0.0")).as(rewritten).isTrue();
+        assertThat(rewritten.contains("1.0.0")).as(rewritten).isFalse();
+        assertThat(rewritten.contains("@{VERSION}")).as(rewritten).isFalse();
     }
 
     @Test
@@ -537,15 +540,15 @@ class TokenEnvoyPluginTest {
         writeResource("desc.txt", "@{VERSION}/@{MOD_ID}\n");
 
         BuildResult first = ccRunner("classes").build();
-        assertTrue(first.getOutput().contains("Configuration cache entry stored"), first.getOutput());
-        assertFalse(first.getOutput().contains("Configuration cache problems"), first.getOutput());
-        assertTrue(classText("example/Cc.class").contains("1.4.2"));
-        assertEquals("1.4.2/cached\n", Files.readString(resourceFile("desc.txt")));
+        assertThat(first.getOutput().contains("Configuration cache entry stored")).as(first.getOutput()).isTrue();
+        assertThat(first.getOutput().contains("Configuration cache problems")).as(first.getOutput()).isFalse();
+        assertThat(classText("example/Cc.class").contains("1.4.2")).isTrue();
+        assertThat(Files.readString(resourceFile("desc.txt"))).isEqualTo("1.4.2/cached\n");
 
         BuildResult second = ccRunner("classes").build();
-        assertTrue(second.getOutput().contains("Reusing configuration cache"), second.getOutput());
-        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":compileJava").getOutcome());
-        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":processResources").getOutcome());
+        assertThat(second.getOutput().contains("Reusing configuration cache")).as(second.getOutput()).isTrue();
+        assertThat(second.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.UP_TO_DATE);
+        assertThat(second.task(":processResources").getOutcome()).isEqualTo(TaskOutcome.UP_TO_DATE);
     }
 
     @Test
@@ -575,13 +578,13 @@ class TokenEnvoyPluginTest {
         writeResource("version.txt", "v=@{VERSION}\n");
 
         BuildResult first = ccRunner("classes").build();
-        assertTrue(first.getOutput().contains("Configuration cache entry stored"), first.getOutput());
-        assertTrue(classText("example/Held.class").contains("@{VERSION}"));
-        assertEquals("v=res\n", Files.readString(resourceFile("version.txt")));
+        assertThat(first.getOutput().contains("Configuration cache entry stored")).as(first.getOutput()).isTrue();
+        assertThat(classText("example/Held.class").contains("@{VERSION}")).isTrue();
+        assertThat(Files.readString(resourceFile("version.txt"))).isEqualTo("v=res\n");
 
         BuildResult second = ccRunner("classes").build();
-        assertTrue(second.getOutput().contains("Reusing configuration cache"), second.getOutput());
-        assertEquals("v=res\n", Files.readString(resourceFile("version.txt")));
+        assertThat(second.getOutput().contains("Reusing configuration cache")).as(second.getOutput()).isTrue();
+        assertThat(Files.readString(resourceFile("version.txt"))).isEqualTo("v=res\n");
     }
 
     @Test
@@ -607,17 +610,21 @@ class TokenEnvoyPluginTest {
                 """
         );
 
-        assertTrue(ccRunner("classes").build().getOutput().contains("Configuration cache entry stored"));
-        assertTrue(classText("example/FileCc.class").contains("one"));
+        assertThat(ccRunner("classes").build().getOutput().contains("Configuration cache entry stored")).isTrue();
+        assertThat(classText("example/FileCc.class").contains("one")).isTrue();
 
         Files.writeString(this.projectDir.resolve("tokens.properties"), "VERSION=two\n");
         BuildResult afterChange = ccRunner("classes").build();
-        assertTrue(afterChange.getOutput().contains("Reusing configuration cache") ||
-                        afterChange.getOutput().contains("cannot be reused because file 'tokens.properties'"), afterChange.getOutput());
-        assertEquals(TaskOutcome.SUCCESS, afterChange.task(":compileJava").getOutcome());
+        assertThat(
+                afterChange.getOutput().contains("Reusing configuration cache") ||
+                        afterChange.getOutput().contains("cannot be reused because file 'tokens.properties'")
+        )
+                .as(afterChange.getOutput())
+                .isTrue();
+        assertThat(afterChange.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
         String rewritten = classText("example/FileCc.class");
-        assertTrue(rewritten.contains("two"), rewritten);
-        assertFalse(rewritten.contains("one"), rewritten);
+        assertThat(rewritten.contains("two")).as(rewritten).isTrue();
+        assertThat(rewritten.contains("one")).as(rewritten).isFalse();
     }
 
     private void writeBuild(String contents) {
@@ -685,11 +692,7 @@ class TokenEnvoyPluginTest {
         List<String> allArgs = new ArrayList<>(Arrays.asList(args));
         allArgs.add("--stacktrace");
         allArgs.add("--console=plain");
-        return GradleRunner.create()
-                .withProjectDir(this.projectDir.toFile())
-                .withPluginClasspath()
-                .withArguments(allArgs)
-                .forwardOutput();
+        return GradleRunner.create().withProjectDir(this.projectDir.toFile()).withPluginClasspath().withArguments(allArgs).forwardOutput();
     }
 
     private GradleRunner ccRunner(String... args) {

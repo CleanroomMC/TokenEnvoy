@@ -1,32 +1,21 @@
 plugins {
-    id 'com.cleanroommc.versioning' version '2.0.0'
     id 'java-gradle-plugin'
-    id 'maven-publish'
-    id 'com.gradle.plugin-publish' version '2.1.1'
-    id 'signing'
-}
-
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    id 'com.cleanroommc.conventions.base'
+    id 'com.cleanroommc.conventions.license'
+    id 'com.cleanroommc.conventions.style'
+    id 'com.cleanroommc.conventions.annotations'
+    id 'com.cleanroommc.conventions.testing'
+    id 'com.cleanroommc.conventions.publishing'
 }
 
 group = 'com.cleanroommc'
-
-repositories {
-    mavenCentral()
-}
+description = 'Replaces tokens during Java compilation and resource processing without rewriting sources.'
 
 dependencies {
     implementation 'org.ow2.asm:asm:9.10.1'
     implementation 'org.ow2.asm:asm-tree:9.10.1'
 
     testImplementation gradleTestKit()
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
-
-test {
-    useJUnitPlatform()
 }
 
 tasks.named('compileJava', JavaCompile) {
@@ -56,14 +45,7 @@ gradlePlugin {
     }
 }
 
-tasks.named('jar', Jar) {
-    manifest {
-        attributes 'Implementation-Version': version
-    }
-}
-
 tasks.withType(Javadoc).configureEach {
-    options.addStringOption('Xdoclint:none', '-quiet')
     options.addStringOption('-add-exports', 'jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED')
 }
 
@@ -72,27 +54,5 @@ publishing {
         pluginMaven(MavenPublication) {
             artifactId = 'tokenenvoy'
         }
-    }
-    repositories {
-        maven {
-            name = 'CleanroomMaven'
-            url = 'https://maven.cleanroommc.com'
-            credentials(PasswordCredentials)
-            authentication {
-                basic(BasicAuthentication)
-            }
-        }
-    }
-}
-
-def signingKey = providers.gradleProperty('signingKey')
-def signingPassword = providers.gradleProperty('signingPassword')
-
-signing {
-    required = {
-        gradle.taskGraph.allTasks.any { it.name == 'publishPlugins' }
-    }
-    if (signingKey.present && signingPassword.present) {
-        useInMemoryPgpKeys(signingKey.get(), signingPassword.get())
     }
 }

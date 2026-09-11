@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
 import groovy.lang.Closure;
@@ -125,7 +130,7 @@ public abstract class TokenEnvoySourceSetSpec implements Named {
 
     static final class TokenBindings {
 
-        private TokenBindings() { }
+        private TokenBindings() {}
 
         static void put(MapProperty<String, String> tokens, ProviderFactory providers, Logger logger, String token, Object value) {
             if (token == null || token.isEmpty()) {

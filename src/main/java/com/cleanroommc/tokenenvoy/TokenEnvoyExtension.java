@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
 import groovy.lang.Closure;
@@ -35,9 +40,7 @@ public abstract class TokenEnvoyExtension {
 
     @Inject
     public TokenEnvoyExtension(ObjectFactory objects) {
-        this.sourceSets = objects.domainObjectContainer(TokenEnvoySourceSetSpec.class,
-                name -> objects.newInstance(TokenEnvoySourceSetSpec.class, name)
-        );
+        this.sourceSets = objects.domainObjectContainer(TokenEnvoySourceSetSpec.class, name -> objects.newInstance(TokenEnvoySourceSetSpec.class, name));
         this.classFilter = objects.newInstance(TokenFileFilterSpec.class);
         this.resourceFilter = objects.newInstance(TokenFileFilterSpec.class);
         getTokens().convention(Map.of());
@@ -138,8 +141,7 @@ public abstract class TokenEnvoyExtension {
                 return spec;
             }
             if (argument instanceof Action<?> action) {
-                @SuppressWarnings("unchecked")
-                Action<TokenEnvoySourceSetSpec> typed = (Action<TokenEnvoySourceSetSpec>) action;
+                @SuppressWarnings("unchecked") Action<TokenEnvoySourceSetSpec> typed = (Action<TokenEnvoySourceSetSpec>) action;
                 typed.execute(spec);
                 return spec;
             }

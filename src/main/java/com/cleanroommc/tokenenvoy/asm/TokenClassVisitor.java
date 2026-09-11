@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy.asm;
 
 import com.cleanroommc.tokenenvoy.Tokens;
@@ -152,7 +157,15 @@ final class TokenClassVisitor extends ClassVisitor {
         }
 
         @Override
-        public AnnotationVisitor visitLocalVariableAnnotation(int typeRef, org.objectweb.asm.TypePath typePath, org.objectweb.asm.Label[] start, org.objectweb.asm.Label[] end, int[] index, String descriptor, boolean visible) {
+        public AnnotationVisitor visitLocalVariableAnnotation(
+                int typeRef,
+                org.objectweb.asm.TypePath typePath,
+                org.objectweb.asm.Label[] start,
+                org.objectweb.asm.Label[] end,
+                int[] index,
+                String descriptor,
+                boolean visible
+        ) {
             return wrap(super.visitLocalVariableAnnotation(typeRef, typePath, start, end, index, descriptor, visible));
         }
 

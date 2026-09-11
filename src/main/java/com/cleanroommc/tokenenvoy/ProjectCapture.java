@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 CleanroomMC contributors
+ * SPDX-License-Identifier: LGPL-3.0-only
+ */
+
 package com.cleanroommc.tokenenvoy;
 
 import groovy.lang.Closure;
@@ -22,16 +27,20 @@ final class ProjectCapture {
 
     private static final int MAX_DEPTH = 8;
 
-    private ProjectCapture() { }
+    private ProjectCapture() {}
 
     static void warnIfUnsafe(Logger logger, String token, Object value) {
         String reason = diagnose(value);
         if (reason == null) {
             return;
         }
-        logger.warn("[Token Envoy] Token '{}' {}. Breaks the configuration cache. "
-                        + "Pass a realized value (set '{}', project.version) "
-                        + "or providers.gradleProperty('name'), not provider { project.... }.", token, reason, token);
+        logger.warn(
+                "[Token Envoy] Token '{}' {}. Breaks the configuration cache. " + "Pass a realized value (set '{}', project.version) " +
+                        "or providers.gradleProperty('name'), not provider { project.... }.",
+                token,
+                reason,
+                token
+        );
     }
 
     static String diagnose(Object value) {
@@ -103,7 +112,9 @@ final class ProjectCapture {
         for (Class<?> type = owner.getClass(); type != null && type != Object.class; type = type.getSuperclass()) {
             try {
                 return read(type.getDeclaredField(name), owner);
-            } catch (NoSuchFieldException ignored) { }
+            } catch (NoSuchFieldException ignored) {
+                // Keep walking up the hierarchy
+            }
         }
         return null;
     }
