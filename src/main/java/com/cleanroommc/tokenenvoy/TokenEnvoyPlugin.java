@@ -19,8 +19,11 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.AbstractCompile;
+import org.gradle.api.tasks.compile.JavaCompile;
 
+import java.io.File;
 import java.lang.reflect.Method;
+import java.net.URI;
 
 public abstract class TokenEnvoyPlugin implements Plugin<Project> {
 
@@ -40,7 +43,10 @@ public abstract class TokenEnvoyPlugin implements Plugin<Project> {
             });
         });
 
-        addForLanguage(project, extension, "java");
+        project.getPluginManager().withPlugin("java", plugin -> {
+            SourceSetContainer sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
+            sourceSets.configureEach(sourceSet -> hookJava(project, sourceSet, extension));
+        });
         addForLanguage(project, extension, "groovy");
         addForLanguage(project, extension, "scala");
         addForLanguage(project, extension, "org.jetbrains.kotlin.jvm", "kotlin");
@@ -121,6 +127,22 @@ public abstract class TokenEnvoyPlugin implements Plugin<Project> {
         project.getTasks().named(sourceSet.getClassesTaskName(), classes -> classes.dependsOn(replace));
     }
 
+    private static void hookJava(Project project, SourceSet sourceSet, TokenEnvoyExtension extension) {
+        TokenEnvoySourceSetSpec spec = extension.getSourceSets().maybeCreate(sourceSet.getName());
+        TokenJavacArguments arguments = project.getObjects().newInstance(TokenJavacArguments.class);
+        arguments.getTokens().set(mergedTokens(project, extension, spec));
+        arguments.getIncludes().set(mergePatterns(project, extension.getClasses().getIncludes(), spec.getClasses().getIncludes()));
+        arguments.getExcludes().set(mergePatterns(project, extension.getClasses().getExcludes(), spec.getClasses().getExcludes()));
+        arguments.getResourcesOnly().set(spec.getResourcesOnly());
+        File pluginJar = new File(URI.create(TokenEnvoyPlugin.class.getProtectionDomain().getCodeSource().getLocation().toExternalForm()));
+        project.getTasks().named(sourceSet.getCompileJavaTaskName(), JavaCompile.class, compile -> {
+            compile.getOptions().getCompilerArgumentProviders().add(arguments);
+            compile.getOptions().setAnnotationProcessorPath(project.files(compile.getOptions().getAnnotationProcessorPath(), pluginJar));
+            compile.getOptions().setFork(true);
+            compile.getOptions().getForkOptions().getJvmArgs().add("--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED");
+        });
+    }
+
     private static MapProperty<String, String> mergedTokens(Project project, TokenEnvoyExtension extension, TokenEnvoySourceSetSpec spec) {
         MapProperty<String, String> merged = project.getObjects().mapProperty(String.class, String.class);
         merged.putAll(extension.getTokens());
@@ -136,9 +158,6 @@ public abstract class TokenEnvoyPlugin implements Plugin<Project> {
     }
 
     private static SourceDirectorySet publishedSources(SourceSet sourceSet, String language) {
-        if ("java".equals(language)) {
-            return sourceSet.getJava();
-        }
         return sourceSet.getExtensions().findByName(language) instanceof SourceDirectorySet sources ? sources : null;
     }
 

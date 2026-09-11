@@ -66,7 +66,7 @@ class TokenEnvoyPluginTest {
     }
 
     @Test
-    void classesConsumersDependOnReplaceTask() throws IOException {
+    void classesConsumersUseJavaCompileDirectly() throws IOException {
         writeBuild(
                 """
                         plugins {
@@ -90,10 +90,10 @@ class TokenEnvoyPluginTest {
                         public class Example {
                         }
                         """);
-        assertNotNull(runner("consumeClassesDirectory").build().task(":tokenEnvoyJavaClasses"),
-                "classesDirectory consumers ran without the token replacement task");
-        assertNotNull(runner("consumeClassesDirs").build().task(":tokenEnvoyJavaClasses"),
-                "output.classesDirs consumers ran without the token replacement task");
+        assertNotNull(runner("consumeClassesDirectory").build().task(":compileJava"),
+                "classesDirectory consumers ran without Java compilation");
+        assertNotNull(runner("consumeClassesDirs").build().task(":compileJava"),
+                "output.classesDirs consumers ran without Java compilation");
     }
 
     @Test
@@ -136,7 +136,6 @@ class TokenEnvoyPluginTest {
 
         BuildResult result = runner("classes").build();
         assertEquals(TaskOutcome.SUCCESS, result.task(":compileJava").getOutcome());
-        assertEquals(TaskOutcome.SUCCESS, result.task(":tokenEnvoyJavaClasses").getOutcome());
         assertEquals(TaskOutcome.SUCCESS, result.task(":processResources").getOutcome());
 
         byte[] classBytes = Files.readAllBytes(classFile("example/Reference.class"));
@@ -254,7 +253,6 @@ class TokenEnvoyPluginTest {
         writeResource("version.txt", "v=@{VERSION}\n");
 
         BuildResult result = runner("classes").build();
-        assertEquals(TaskOutcome.SKIPPED, result.task(":tokenEnvoyJavaClasses").getOutcome());
 
         String classText = classText("example/Held.class");
         assertTrue(classText.contains("@{VERSION}"), classText);
@@ -340,7 +338,7 @@ class TokenEnvoyPluginTest {
     }
 
     @Test
-    void filterChangeRewritesAlreadyCompiledClasses() throws IOException {
+    void filterChangeRecompilesClasses() throws IOException {
         writeBuild(
                 """
                 plugins {
@@ -388,8 +386,7 @@ class TokenEnvoyPluginTest {
         );
 
         BuildResult second = runner("classes").build();
-        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":compileJava").getOutcome());
-        assertEquals(TaskOutcome.SUCCESS, second.task(":tokenEnvoyJavaClasses").getOutcome());
+        assertEquals(TaskOutcome.SUCCESS, second.task(":compileJava").getOutcome());
         assertTrue(classText("example/Replaced.class").contains("@{VERSION}"));
         assertTrue(classText("example/Held.class").contains("yes"));
     }
@@ -439,7 +436,7 @@ class TokenEnvoyPluginTest {
 
         BuildResult second = ccRunner("classes").build();
         assertTrue(second.getOutput().contains("Reusing configuration cache"), second.getOutput());
-        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":tokenEnvoyJavaClasses").getOutcome());
+        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":compileJava").getOutcome());
         assertEquals(TaskOutcome.UP_TO_DATE, second.task(":processResources").getOutcome());
     }
 
@@ -466,7 +463,7 @@ class TokenEnvoyPluginTest {
     }
 
     @Test
-    void tokenChangeRewritesAlreadyCompiledClasses() throws IOException {
+    void tokenChangeRecompilesClasses() throws IOException {
         writeBuild(
                 """
                 plugins {
@@ -503,8 +500,7 @@ class TokenEnvoyPluginTest {
         );
 
         BuildResult second = runner("classes").build();
-        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":compileJava").getOutcome());
-        assertEquals(TaskOutcome.SUCCESS, second.task(":tokenEnvoyJavaClasses").getOutcome());
+        assertEquals(TaskOutcome.SUCCESS, second.task(":compileJava").getOutcome());
         String rewritten = classText("example/Version.class");
         assertTrue(rewritten.contains("2.0.0"), rewritten);
         assertFalse(rewritten.contains("1.0.0"), rewritten);
@@ -548,7 +544,7 @@ class TokenEnvoyPluginTest {
 
         BuildResult second = ccRunner("classes").build();
         assertTrue(second.getOutput().contains("Reusing configuration cache"), second.getOutput());
-        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":tokenEnvoyJavaClasses").getOutcome());
+        assertEquals(TaskOutcome.UP_TO_DATE, second.task(":compileJava").getOutcome());
         assertEquals(TaskOutcome.UP_TO_DATE, second.task(":processResources").getOutcome());
     }
 
@@ -580,13 +576,11 @@ class TokenEnvoyPluginTest {
 
         BuildResult first = ccRunner("classes").build();
         assertTrue(first.getOutput().contains("Configuration cache entry stored"), first.getOutput());
-        assertEquals(TaskOutcome.SKIPPED, first.task(":tokenEnvoyJavaClasses").getOutcome());
         assertTrue(classText("example/Held.class").contains("@{VERSION}"));
         assertEquals("v=res\n", Files.readString(resourceFile("version.txt")));
 
         BuildResult second = ccRunner("classes").build();
         assertTrue(second.getOutput().contains("Reusing configuration cache"), second.getOutput());
-        assertEquals(TaskOutcome.SKIPPED, second.task(":tokenEnvoyJavaClasses").getOutcome());
         assertEquals("v=res\n", Files.readString(resourceFile("version.txt")));
     }
 
@@ -620,7 +614,7 @@ class TokenEnvoyPluginTest {
         BuildResult afterChange = ccRunner("classes").build();
         assertTrue(afterChange.getOutput().contains("Reusing configuration cache") ||
                         afterChange.getOutput().contains("cannot be reused because file 'tokens.properties'"), afterChange.getOutput());
-        assertEquals(TaskOutcome.SUCCESS, afterChange.task(":tokenEnvoyJavaClasses").getOutcome());
+        assertEquals(TaskOutcome.SUCCESS, afterChange.task(":compileJava").getOutcome());
         String rewritten = classText("example/FileCc.class");
         assertTrue(rewritten.contains("two"), rewritten);
         assertFalse(rewritten.contains("one"), rewritten);

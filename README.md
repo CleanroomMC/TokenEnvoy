@@ -1,6 +1,6 @@
 # Token Envoy
 
-Gradle plugin that replaces tokens in **compiled classes** (ASM, after javac) and **resources** (`processResources`).
+Gradle plugin that replaces tokens in **string literals** during compilation and **resources** (`processResources`).
 Source files are never rewritten.
 
 ## Apply
@@ -38,7 +38,7 @@ tokenEnvoy {
     main { // Per-source set: only for the `main` source set in this case
         set 'MOD_ID', project.findProperty('mod_id')
         set file('tokens.properties') // NAME=value properties file
-        // resourcesOnly = true // default false. This would skip class rewriting
+        // resourcesOnly = true // default false. This would skip class replacement
 
         classes {
             include '**/Tokens.class', 'com.example.Reference'
@@ -74,7 +74,7 @@ set 'VERSION', project.version
 set 'VERSION', providers.gradleProperty('mod_version')
 ```
 
-### Property files
+### Properties
 
 ```properties
 # tags.properties
@@ -83,21 +83,35 @@ MOD_ID=${mod_id}
 ```
 
 Keys are token names. Values may use `${gradleProperty}` from `gradle.properties` / `-P`.
-Source-set `set` calls override globals of the same name.
+Source set `set` calls override globals of the same name.
 
 ### Targets
 
-| Target                                       | How                                                                                                                                                                                                   |
-|----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Java (Groovy/Scala/Kotlin JVM if applicable) | Compile writes raw classes, then `tokenEnvoy<Language>Classes` rewrites `@{NAME}` in string constants, `static final` field values, annotation values, and `invokedynamic` bootstrap strings with ASM |
-| Resources                                    | `processResources` filters `@{NAME}` in text files. Known binaries (png, ogg, jar, …) are copied as-is.                                                                                               |
+| Target              | How                                                                                                                                                                                  |
+|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Java                | A javac plugin replaces string literals, including text blocks and annotation values, before constant folding and inlining. `compileJava` writes directly to its normal destination. |
+| Groovy/Scala/Kotlin | Compile writes raw classes, then `tokenEnvoy<Language>Classes` replaces string constants and annotation values with ASM.                                                             |
+| Resources           | `processResources` filters `@{NAME}` in text files. Known binaries (png, ogg, jar, …) are copied as-is.                                                                              |
 
-`resourcesOnly = true` on a source set hooks only that source set's `processResources` task.
+`resourcesOnly = true` on a source set replaces tokens only in that source set's resources.
+
+Java compilation uses a forked javac process and requires a JDK 21 or newer compiler.
+- JDK 21 and 25 are tested.
+- Plugin adds module export needed to update javac's literal trees. It does not change the selected toolchain or bytecode target.
+
+Token and filter changes trigger recompilation. Ordinary source edits remain incremental.
 
 ### File Filters
 
 `classes` and `resources` choose which files receive replacements.
 Files that do not match are still compiled or copied and their `@{NAME}` markers stay in place.
+
+For Java, class patterns select top-level classes by package and class name, such as `com/example/Reference.class`
+
+Selecting a top-level class also selects its nested, local, and anonymous classes.
+Nested classes cannot be filtered separately.
+Replaced constants can be inlined into other classes, including classes outside the filter.
+These semantics differ from filtering individual compiled class files.
 
 Patterns are Gradle Ant-style (`*`, `**`, `?`), relative to the class or resource output root.
 
@@ -117,4 +131,3 @@ tokenEnvoy {
 ```
 
 Use `sourceSets.*.output`/`classes` task as the classes input.
-The compile task's own destination is a directory, allowing later token changes to be re-applied without recompiling.

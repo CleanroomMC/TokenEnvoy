@@ -29,6 +29,14 @@ test {
     useJUnitPlatform()
 }
 
+tasks.named('compileJava', JavaCompile) {
+    options.compilerArgs.add('--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED')
+}
+
+tasks.named('pluginUnderTestMetadata') {
+    pluginClasspath.setFrom(tasks.named('jar'), configurations.runtimeClasspath)
+}
+
 gradlePlugin {
     website = 'https://github.com/CleanroomMC/GradleTokenEnvoy'
     vcsUrl = 'https://github.com/CleanroomMC/GradleTokenEnvoy.git'
@@ -37,7 +45,7 @@ gradlePlugin {
             id = "${group}.tokenenvoy"
             implementationClass = "${group}.tokenenvoy.TokenEnvoyPlugin"
             displayName = 'Token Envoy'
-            description = 'Replaces tokens in compiled classes and resources without rewriting sources.'
+            description = 'Replaces tokens during Java compilation and resource processing without rewriting sources.'
             tags.set(['token', 'replacement', 'asm', 'resources'])
             compatibility {
                 features {
@@ -56,6 +64,7 @@ tasks.named('jar', Jar) {
 
 tasks.withType(Javadoc).configureEach {
     options.addStringOption('Xdoclint:none', '-quiet')
+    options.addStringOption('-add-exports', 'jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED')
 }
 
 publishing {

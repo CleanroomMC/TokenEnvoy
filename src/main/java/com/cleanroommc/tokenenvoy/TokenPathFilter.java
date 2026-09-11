@@ -77,7 +77,7 @@ public final class TokenPathFilter {
         return includeSpec(patterns);
     }
 
-    private static List<String> canonicalize(Collection<String> patterns, Kind kind) {
+    static List<String> canonicalize(Collection<String> patterns, Kind kind) {
         if (patterns == null || patterns.isEmpty()) {
             return List.of();
         }
