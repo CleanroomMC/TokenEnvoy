@@ -6,6 +6,7 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.SourceDirectorySet;
@@ -76,10 +77,11 @@ public abstract class TokenEnvoyPlugin implements Plugin<Project> {
     }
 
     private static void hookClasses(Project project, SourceSet sourceSet, TokenEnvoyExtension extension, String language) {
-        DirectoryProperty published = publishedClasses(sourceSet, language);
-        if (published == null) {
+        SourceDirectorySet sources = publishedSources(sourceSet, language);
+        if (sources == null) {
             return;
         }
+        DirectoryProperty published = sources.getDestinationDirectory();
         String compileName = sourceSet.getCompileTaskName(language);
         if (!project.getTasks().getNames().contains(compileName)) {
             return;
@@ -113,6 +115,8 @@ public abstract class TokenEnvoyPlugin implements Plugin<Project> {
 
         compile.configure(task -> destinationDirectory(task).set(spec.getResourcesOnly().flatMap(only -> only ? published : raw)));
 
+        sources.compiledBy(replace, ReplaceClassTokens::getOutputDirectory);
+        ((ConfigurableFileCollection) sourceSet.getOutput().getClassesDirs()).builtBy(replace);
         sourceSet.compiledBy(replace);
         project.getTasks().named(sourceSet.getClassesTaskName(), classes -> classes.dependsOn(replace));
     }
@@ -131,15 +135,11 @@ public abstract class TokenEnvoyPlugin implements Plugin<Project> {
         return merged;
     }
 
-    private static DirectoryProperty publishedClasses(SourceSet sourceSet, String language) {
+    private static SourceDirectorySet publishedSources(SourceSet sourceSet, String language) {
         if ("java".equals(language)) {
-            return sourceSet.getJava().getDestinationDirectory();
+            return sourceSet.getJava();
         }
-        Object extension = sourceSet.getExtensions().findByName(language);
-        if (extension instanceof SourceDirectorySet sources) {
-            return sources.getDestinationDirectory();
-        }
-        return null;
+        return sourceSet.getExtensions().findByName(language) instanceof SourceDirectorySet sources ? sources : null;
     }
 
     private static DirectoryProperty destinationDirectory(Task task) {

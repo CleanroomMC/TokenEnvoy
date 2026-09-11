@@ -17,6 +17,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TokenEnvoyPluginTest {
@@ -62,6 +63,37 @@ class TokenEnvoyPluginTest {
                 """
         );
         assertEquals(TaskOutcome.SUCCESS, runner("help").build().task(":help").getOutcome());
+    }
+
+    @Test
+    void classesConsumersDependOnReplaceTask() throws IOException {
+        writeBuild(
+                """
+                        plugins {
+                            id 'java'
+                            id 'com.cleanroommc.tokenenvoy'
+                        }
+                        tasks.register('consumeClassesDirectory') {
+                            inputs.dir(sourceSets.main.java.classesDirectory)
+                            doLast { }
+                        }
+                        tasks.register('consumeClassesDirs') {
+                            inputs.files(sourceSets.main.output.classesDirs)
+                            doLast { }
+                        }
+                        """
+        );
+        writeFile("src/main/java/com/example/Example.java",
+                """
+                        package com.example;
+
+                        public class Example {
+                        }
+                        """);
+        assertNotNull(runner("consumeClassesDirectory").build().task(":tokenEnvoyJavaClasses"),
+                "classesDirectory consumers ran without the token replacement task");
+        assertNotNull(runner("consumeClassesDirs").build().task(":tokenEnvoyJavaClasses"),
+                "output.classesDirs consumers ran without the token replacement task");
     }
 
     @Test
@@ -600,6 +632,13 @@ class TokenEnvoyPluginTest {
         } catch (IOException exception) {
             throw new RuntimeException(exception);
         }
+    }
+
+    private Path writeFile(String relative, String contents) throws IOException {
+        Path file = this.projectDir.resolve(relative);
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, contents);
+        return file;
     }
 
     private Path writeJava(String contents) throws IOException {
