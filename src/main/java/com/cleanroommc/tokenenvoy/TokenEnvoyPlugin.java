@@ -20,15 +20,18 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.compile.AbstractCompile;
 import org.gradle.api.tasks.compile.JavaCompile;
+import org.gradle.process.CommandLineArgumentProvider;
 
 import java.io.File;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.util.List;
 
 public abstract class TokenEnvoyPlugin implements Plugin<Project> {
 
@@ -144,8 +147,31 @@ public abstract class TokenEnvoyPlugin implements Plugin<Project> {
             compile.getOptions().getCompilerArgumentProviders().add(arguments);
             compile.getOptions().setAnnotationProcessorPath(project.files(compile.getOptions().getAnnotationProcessorPath(), pluginJar));
             compile.getOptions().setFork(true);
-            compile.getOptions().getForkOptions().getJvmArgs().add("--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED");
+            compile.getOptions().getForkOptions().getJvmArgumentProviders().add(new JavacTreeExports(compile.getJavaCompiler().map(compiler -> compiler.getMetadata().getLanguageVersion().canCompileOrRun(9))));
         });
+    }
+
+    /**
+     * Java 8 compilers have no module system and reject {@code --add-exports}.
+     */
+    public static final class JavacTreeExports implements CommandLineArgumentProvider {
+
+        private final Provider<Boolean> modular;
+
+        JavacTreeExports(Provider<Boolean> modular) {
+            this.modular = modular;
+        }
+
+        @Input
+        public Provider<Boolean> getModular() {
+            return this.modular;
+        }
+
+        @Override
+        public Iterable<String> asArguments() {
+            return this.modular.get() ? List.of("--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED") : List.of();
+        }
+
     }
 
     private static MapProperty<String, String> mergedTokens(Project project, TokenEnvoyExtension extension, TokenEnvoySourceSetSpec spec) {

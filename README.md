@@ -95,9 +95,9 @@ Source set `set` calls override globals of the same name.
 
 `resourcesOnly = true` on a source set replaces tokens only in that source set's resources.
 
-Java compilation uses a forked javac process and requires a JDK 21 or newer compiler.
-- JDK 21 and 25 are tested.
-- Plugin adds module export needed to update javac's literal trees. It does not change the selected toolchain or bytecode target.
+Java compilation uses a forked javac process and works with a JDK 8 or newer compiler.
+- JDK 8, 21 and 25 are tested.
+- On JDK 9 and newer, the plugin adds the module export needed to update javac's literal trees. It does not change the selected toolchain or bytecode target.
 
 Token and filter changes trigger recompilation. Ordinary source edits remain incremental.
 
@@ -136,4 +136,4 @@ Use `sourceSets.*.output`/`classes` task as the classes input.
 
 The build applies [Cleanroom Conventions](https://github.com/CleanroomMC/Conventions), whose plugin jar needs a Java 25 Gradle daemon.
 
-The published plugin still targets Java 21.
+The published plugin still targets Java 21. Its javac plugin is a Multi-Release class, built with a JDK 8 toolchain at the jar root and with Java 21 under `META-INF/versions/21`.

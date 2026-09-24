@@ -166,6 +166,48 @@ class TokenJavacPluginTest {
     }
 
     @Test
+    void replacesTokensOnJava8() throws IOException {
+        write("settings.gradle", "rootProject.name = 'java8-test'");
+        write(
+                "build.gradle",
+                """
+                plugins {
+                    id 'java'
+                    id 'com.cleanroommc.tokenenvoy'
+                }
+                java.toolchain.languageVersion = JavaLanguageVersion.of(8)
+                tokenEnvoy { set 'VERSION', 'eight' }
+                tasks.register('runProbe', JavaExec) {
+                    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+                    classpath = sourceSets.main.runtimeClasspath
+                    mainClass = 'example.Probe'
+                }
+                """
+        );
+        write(
+                "src/main/java/example/Probe.java",
+                """
+                package example;
+                public class Probe {
+                    public static final String VERSION = "@{VERSION}";
+                    public static void main(String[] args) {
+                        if (!Consumer.INLINED.equals(VERSION)) {
+                            throw new AssertionError("Replacement changed Java semantics");
+                        }
+                        System.out.println("VERSION=" + VERSION);
+                    }
+                }
+                """
+        );
+        write("src/main/java/example/Consumer.java", "package example; public class Consumer { public static final String INLINED = Probe.VERSION; }");
+
+        BuildResult result = runner("runProbe").build();
+        assertThat(result.getOutput()).contains("VERSION=eight");
+        byte[] probe = Files.readAllBytes(this.projectDir.resolve("build/classes/java/main/example/Probe.class"));
+        assertThat((probe[6] & 255) << 8 | probe[7] & 255).isEqualTo(52);
+    }
+
+    @Test
     void preservesAnnotationProcessorsAndReleaseTargetsOnJava25() throws IOException {
         write("settings.gradle", "rootProject.name = 'processor-test'; include 'processor'");
         write("processor/build.gradle", "plugins { id 'java' }; java.toolchain.languageVersion = JavaLanguageVersion.of(25)");

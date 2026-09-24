@@ -11,15 +11,46 @@ plugins {
 group = 'com.cleanroommc'
 description = 'Replaces tokens during Java compilation and resource processing without rewriting sources.'
 
+// The javac plugin runs inside the consumer's compiler. Java 8 compilers load the jar root and newer ones take the Java 21 variant.
+sourceSets {
+    javac
+    javac8
+}
+
+def java8Compiler = javaToolchains.compilerFor {
+    languageVersion = JavaLanguageVersion.of(8)
+}
+
 dependencies {
+    javac8CompileOnly files(java8Compiler.map { it.metadata.installationPath.file('lib/tools.jar') })
+
     implementation 'org.ow2.asm:asm:9.10.1'
     implementation 'org.ow2.asm:asm-tree:9.10.1'
 
     testImplementation gradleTestKit()
 }
 
-tasks.named('compileJava', JavaCompile) {
+tasks.named('compileJavacJava', JavaCompile) {
     options.compilerArgs.add('--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED')
+}
+
+tasks.named('compileJavac8Java', JavaCompile) {
+    javaCompiler = java8Compiler
+}
+
+tasks.named('jar', Jar) {
+    from sourceSets.javac8.output
+    into('META-INF/versions/21') {
+        from sourceSets.javac.output
+    }
+    manifest.attributes('Multi-Release': 'true')
+}
+
+tasks.named('sourcesJar', Jar) {
+    from sourceSets.javac8.allSource
+    into('META-INF/versions/21') {
+        from sourceSets.javac.allSource
+    }
 }
 
 tasks.named('pluginUnderTestMetadata') {
@@ -43,10 +74,6 @@ gradlePlugin {
             }
         }
     }
-}
-
-tasks.withType(Javadoc).configureEach {
-    options.addStringOption('-add-exports', 'jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED')
 }
 
 publishing {
