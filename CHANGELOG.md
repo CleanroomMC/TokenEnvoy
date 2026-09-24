@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.0.0 - 2026-09-24
+
+> [!IMPORTANT]
+> This is a new major version (2.x → 3.x).
+
+## Bug Fix
+
+- Support Java 8 compilers *[commit by @Rongmario in 811a6cb]*
+
+## First-time Contributors
+
+- **@github-actions[bot] made their first contribution!**
+
+**Full Changelog**: https://github.com/CleanroomMC/TokenEnvoy/compare/2.0.0...3.0.0
+
 ## 2.0.0 - 2026-09-11
 
 > [!IMPORTANT]
