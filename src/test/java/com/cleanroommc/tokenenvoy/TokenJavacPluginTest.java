@@ -33,7 +33,8 @@ class TokenJavacPluginTest {
         Path root = this.projectDir;
         for (int version : List.of(21, 25)) {
             this.projectDir = root.resolve("java" + version);
-            write("settings.gradle", "rootProject.name = 'javac-test'");
+            // TestKit's own build cache outlives the run, so a repeat run would load compileJava instead of compiling incrementally
+            write("settings.gradle", "rootProject.name = 'javac-test'\nbuildCache { local { directory = file('build-cache') } }");
             write(
                     "build.gradle",
                     """
@@ -114,7 +115,7 @@ class TokenJavacPluginTest {
             }
 
             BuildResult first = runner("runProbe").build();
-            assertThat(List.of(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE).contains(first.task(":compileJava").getOutcome())).isTrue();
+            assertThat(first.task(":compileJava").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
             assertThat(first.task(":tokenEnvoyJavaClasses")).isNull();
             assertThat(first.getOutput().contains("VERSION=one")).as(first.getOutput()).isTrue();
             assertThat(first.getOutput().contains("DETAIL=" + Base64.getEncoder().encodeToString(detail.getBytes(StandardCharsets.UTF_8))))
